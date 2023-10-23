@@ -1,48 +1,83 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "../uttils/axios";
+import { toast } from "react-toastify";
+import LoadingOverlay from "react-loading-overlay";
 
 function Login() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("token")) {
+      navigate("/");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (e) => {
     let { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    try {
+      setLoading(true);
+
+      let { data } = await axios.post("/api/auth/login", formData);
+
+      setLoading(false);
+
+      if (data.success) {
+        let { token, message, userDetails } = data;
+        toast.success(message);
+        localStorage.setItem("token", token);
+        localStorage.setItem("userDetails", JSON.stringify(userDetails));
+        navigate("/");
+      } else {
+        toast.error(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+      toast.error("Something Went Wrong");
+    }
   };
 
   return (
-    <FormContainer>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
+    <LoadingOverlay active={loading} spinner text="Loading your content...">
+      <FormContainer>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
 
-        <button>Login</button>
-        <span>
-          Don't have an account? <Link to="/register">Create Account</Link>
-        </span>
-      </form>
-    </FormContainer>
+          <button>Login</button>
+          <span>
+            Don't have an account? <Link to="/register">Register</Link>
+          </span>
+        </form>
+      </FormContainer>
+    </LoadingOverlay>
   );
 }
 
